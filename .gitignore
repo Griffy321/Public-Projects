@@ -1,0 +1,13 @@
+# Stock App - sensitive/generated files
+Stock App/__pycache__/
+Stock App/data/
+Stock App/.gitignore
+Stock App/config.env
+
+# General Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+.env
