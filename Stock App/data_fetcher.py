@@ -6,15 +6,15 @@
 
 import pandas as pd
 import os
-import datetime
 import api_client as api
 import asyncio
 from datetime import datetime
 
-price_data_path = "C:/Users/james/OneDrive/Desktop/Python Projects/Stock App/data/price_data"
-cash_flow_data_path = "C:/Users/james/OneDrive/Desktop/Python Projects/Stock App/data/cash_flow_data"
-ratio_data_path = "C:/Users/james/OneDrive/Desktop/Python Projects/Stock App/data/ratio_data"
-profile_data_path = "C:/Users/james/OneDrive/Desktop/Python Projects/Stock App/data/profile_data"
+# TODO: convert these hardcoded paths to pathlib
+price_data_path     = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/price_data"
+cash_flow_data_path = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/cash_flow_data"
+ratio_data_path     = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/ratio_data"
+profile_data_path   = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/profile_data"
 folder_paths = [price_data_path, cash_flow_data_path, ratio_data_path, profile_data_path]
 
 def load_data(filename:str, path:str) -> pd.DataFrame:

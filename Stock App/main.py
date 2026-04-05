@@ -1,6 +1,5 @@
 import pandas as pd
 import data_fetcher
-import api_client as api
 import asyncio
 from datetime import datetime
 
@@ -15,7 +14,7 @@ def take_ticker_input():
 def take_date_input():
     start = input("Enter the date you want the chart to start from (yyyy-mm-dd) (default - 2026-01-01): ")
     if len(start) == 0:
-        start = "2026-01-01"
+        start = "2025-01-01"
     print(start)
     end = input("Enter the date you want the chart to end at (yyyy-mm-dd) (default - today): ")
     if len(end) == 0:

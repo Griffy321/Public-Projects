@@ -9,6 +9,7 @@ import requests
 
 import aiohttp # for async functions and making API requests
 import asyncio # for async functions and making API requests
+from pathlib import Path
 
 # Responsible for:
 # - making API requests
@@ -18,7 +19,7 @@ import asyncio # for async functions and making API requests
 
 # This file should know about the external provider format.
 
-load_dotenv("config.env")
+load_dotenv(Path(__file__).parent / "config.env")
 api_key = os.getenv("api_key")
 chart_30_min_url = os.getenv("30_min_chart_url")
 cash_flow_url = os.getenv("cash_flow_url")

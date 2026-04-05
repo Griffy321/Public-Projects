@@ -14,14 +14,12 @@ class Metrics:
     def __init__(self, ticker:str):
         self.ticker = ticker.upper()
 
-    def mega_df(self, price_df:pd.DataFrame = None, cash_flow_df:pd.DataFrame = None, ratio_df:pd.DataFrame = None) -> pd.DataFrame: 
+    def mega_df(self) -> pd.DataFrame: 
         ticker = self.ticker
-        if price_df is None and cash_flow_df is None and ratio_df is None:
-            print("need to load files")
         paths = {
-                "price"     : f"C:/Users/james/OneDrive/Desktop/Python Projects/Stock App/data/price_data/{ticker}.parquet",
-                "cash_flow" : f"C:/Users/james/OneDrive/Desktop/Python Projects/Stock App/data/cash_flow_data/{ticker}.parquet",
-                "ratio"     : f"C:/Users/james/OneDrive/Desktop/Python Projects/Stock App/data/ratio_data/{ticker}.parquet"
+                "price"     : f"C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/price_data/{ticker}.parquet",
+                "cash_flow" : f"C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/cash_flow_data/{ticker}.parquet",
+                # "ratio"     : f"C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/ratio_data/{ticker}.parquet"
                 }
         for path in paths.items():
             print(path[1])
@@ -36,10 +34,32 @@ class Metrics:
                 print(end)
                 data_fetcher.get_company_data(ticker=ticker, start_date=start, end_date=end)
 
+        # Joining cash flow data 
         price = pd.read_parquet(paths["price"])
-        ratio = pd.read_parquet(paths["ratio"])
-        # price_ratio = pd.merge_asof(price, ratio, left_on="date", right_on="date", direction='forward', suffixes=('_x', '_y'))
-        # print(price_ratio.head())
+        price["date"] = pd.to_datetime(price["date"], errors="coerce")
+        cash = pd.read_parquet(paths["cash_flow"])
+        cash["acceptedDate"] = pd.to_datetime(cash["acceptedDate"], errors="coerce")
+        cash = cash[['symbol', 'acceptedDate','netIncome',
+       'depreciationAndAmortization', 'deferredIncomeTax',
+       'stockBasedCompensation', 'changeInWorkingCapital',
+       'accountsReceivables', 'inventory', 'accountsPayables',
+       'otherWorkingCapital', 'otherNonCashItems',
+       'netCashProvidedByOperatingActivities',
+       'investmentsInPropertyPlantAndEquipment', 'acquisitionsNet',
+       'purchasesOfInvestments', 'salesMaturitiesOfInvestments',
+       'otherInvestingActivities', 'netCashProvidedByInvestingActivities',
+       'netDebtIssuance', 'longTermNetDebtIssuance',
+       'shortTermNetDebtIssuance', 'netStockIssuance',
+       'netCommonStockIssuance', 'commonStockIssuance',
+       'commonStockRepurchased', 'netPreferredStockIssuance',
+       'netDividendsPaid', 'commonDividendsPaid', 'preferredDividendsPaid',
+       'otherFinancingActivities', 'netCashProvidedByFinancingActivities',
+       'effectOfForexChangesOnCash', 'netChangeInCash', 'cashAtEndOfPeriod',
+       'cashAtBeginningOfPeriod', 'operatingCashFlow', 'capitalExpenditure',
+       'freeCashFlow', 'incomeTaxesPaid', 'interestPaid']]
+        price_cash = pd.merge_asof(price, cash, left_on="date", right_on="acceptedDate", direction='backward').sort_values(by="date", ascending=False)
+
+
 
     # # Valuation Dynamics
     # def pe_ratio(self, df):
@@ -64,5 +84,5 @@ class Metrics:
     # def institutional_ownership_drift(self, df): # umulative insider buy/sell ratio over rolling 12 months
     #     pass
 
-cls = Metrics("DSFDF")
+cls = Metrics("AAPL")
 print(cls.mega_df())
