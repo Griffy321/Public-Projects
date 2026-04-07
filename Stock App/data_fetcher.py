@@ -11,11 +11,13 @@ import asyncio
 from datetime import datetime
 
 # TODO: convert these hardcoded paths to pathlib
-price_data_path     = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/price_data"
-cash_flow_data_path = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/cash_flow_data"
-ratio_data_path     = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/ratio_data"
-profile_data_path   = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/profile_data"
-folder_paths = [price_data_path, cash_flow_data_path, ratio_data_path, profile_data_path]
+price_data_path         = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/price_data"
+cash_flow_data_path     = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/cash_flow_data"
+ratio_data_path         = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/ratio_data"
+profile_data_path       = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/profile_data"
+mkt_cap_data_path       = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/mkt_cap_data"
+balance_sheet_data_path = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/balance_sheet_data"
+folder_paths = [price_data_path, cash_flow_data_path, ratio_data_path, profile_data_path, mkt_cap_data_path, balance_sheet_data_path]
 
 def load_data(filename:str, path:str) -> pd.DataFrame:
     """Load a parquet file into a DataFrame, casting any date column to datetime."""
@@ -62,15 +64,19 @@ async def get_company_data(ticker:str, start_date:str, end_date:str) -> dict:
 
     price_data = await chart_data_task
     cash_flow_data = api.get_cash_flow(ticker)
+    balance_sheet_data = api.get_balance_sheet(ticker)
     ratio_data = api.get_ratio_data(ticker)
     profile_data = api.get_profile_data(ticker)
+    mkt_cap_data = api.get_historical_mkt_cap(ticker, start_date=start_date, end_date=end_date)
 
     data_dict = {
         "ticker": ticker,
         "price_data": price_data,
         "cash_flow_data": cash_flow_data,
+        "balance_sheet_data": balance_sheet_data,
         "ratio_data": ratio_data,
-        "profile_data": profile_data
+        "profile_data": profile_data,
+        "mkt_cap_data": mkt_cap_data
     }
     df_dict = to_dataframe_dict(data_dict=data_dict)
     return df_dict

@@ -25,6 +25,8 @@ chart_30_min_url = os.getenv("30_min_chart_url")
 cash_flow_url = os.getenv("cash_flow_url")
 ratio_url = os.getenv("ratio_url")
 profile_url = os.getenv("profile_url")
+historical_mkt_cap_url = os.getenv("historical_mkt_cap")
+balance_sheet_url = os.getenv("balance_sheet_url")
 
 
 async def get_30_min_chart(ticker: str, start_date: datetime.date | str | None = None, end_date: datetime.date | str | None = None,) -> list:
@@ -101,6 +103,32 @@ def get_cash_flow(ticker:str, limit:int=500, period:str="annual") -> json:
     
 # print(type(get_cash_flow("AAPL", limit=4, period="annual")))
 
+def get_balance_sheet(ticker:str, limit:int=500, period:str="annual") -> json:
+    """Fetch balance sheet statements for a ticker. Returns parsed JSON or False on failure."""
+    ticker = ticker.upper()
+    if period not in ["Q1", "Q2", "Q3", "Q4", "FY", "annual", "quarter"]:
+        raise ValueError(f"Invalid period: {period}. Must be one of 'Q1', 'Q2', 'Q3', 'Q4', 'FY', 'annual', or 'quarter'.")
+    params = {
+        "apikey": api_key,
+        "symbol": ticker,
+        "limit": limit,
+        "period": period
+    }
+    try:
+        response = requests.get(balance_sheet_url, params=params)
+        if response.status_code == 503:
+            time.sleep(30)
+            response = requests.get(balance_sheet_url, params=params)
+            if response.status_code != 200:
+                print(f"Failed to retrieve balance sheet data for {ticker} after retrying: {response.status_code}")
+                return False
+        response.raise_for_status()
+        data = response.json()
+        return data
+    except requests.exceptions.RequestException as e:
+        print(f"Error retrieving balance sheet data for {ticker}: {e}")
+        return False
+
 def get_ratio_data(ticker:str, limit:int=500, period:str="annual") -> json:
     """Fetch financial ratios (P/E, P/B, etc.) for a ticker. Returns parsed JSON or False on failure."""
     ticker = ticker.upper()
@@ -152,3 +180,32 @@ def get_profile_data(ticker:str) -> json:
         return False
 
 # print(type(get_profile_data("AAPL")))
+
+def get_historical_mkt_cap(ticker: str, limit: int = 500, start_date: datetime.date | str | None = None, end_date: datetime.date | str | None = None) -> json:
+    """Fetch historical daily market cap for a ticker. Returns parsed JSON or False on failure."""
+    ticker = ticker.upper()
+    params = {
+        "apikey": api_key,
+        "symbol": ticker,
+        "limit": limit
+    }
+    if start_date is not None:
+        params["from"] = str(start_date)
+    if end_date is not None:
+        params["to"] = str(end_date)
+    try:
+        response = requests.get(historical_mkt_cap_url, params=params)
+        if response.status_code == 503:
+            time.sleep(30)
+            response = requests.get(historical_mkt_cap_url, params=params)
+            if response.status_code != 200:
+                print(f"Failed to retrieve historical market cap data for {ticker} after retrying: {response.status_code}")
+                return False
+        response.raise_for_status()
+        data = response.json()
+        return data
+    except requests.exceptions.RequestException as e:
+        print(f"Error retrieving historical market cap data for {ticker}: {e}")
+        return False
+
+# print(type(get_historical_mkt_cap("AAPL", limit=4)))
