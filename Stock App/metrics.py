@@ -184,5 +184,5 @@ class Metrics:
     def institutional_ownership_drift(self, df): # umulative insider buy/sell ratio over rolling 12 months
         pass
 
-cls = Metrics("AAPL")
-print(cls.mega_df())
+# cls = Metrics("AAPL")
+# print(cls.mega_df())
