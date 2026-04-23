@@ -305,3 +305,5 @@ project_4_stock_analyzer/
 └── data/
     ├── raw/
     └── outputs/
+
+Add intergration with the Trading 212 pie API to push updates 
