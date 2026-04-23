@@ -2,6 +2,7 @@ import pandas as pd
 import data_fetcher
 import asyncio
 from datetime import datetime
+from metrics import Metrics
 
 # Responsibilities:
 # accept ticker input
@@ -21,6 +22,7 @@ def take_date_input():
         end = datetime.today().date().strftime(format="%Y-%m-%d")
     return start, end 
 
+
 if __name__ == "__main__":
     while True:
         ticker = take_ticker_input()
@@ -31,7 +33,18 @@ if __name__ == "__main__":
         try:
             company_data = asyncio.run(data_fetcher.get_company_data(ticker, start_date=start, end_date=end))
             data_fetcher.update_save_files(ticker, df_dict=company_data)
-            print(f"Data for {ticker}:")
             print(f"Fetched all data for {ticker}")
         except Exception as error:
             print(f"An error occurred while fetching data for {ticker}: {error}")
+
+        metrics = Metrics(ticker=ticker)
+        print(f"Created class instance for {ticker}")
+        try:
+            mega_df = metrics.calculate_all()
+            print(f"Calculated all metrics for {ticker}")
+            print(mega_df.columns)
+        except Exception as e:
+            print(f"Got the following error: {e}")
+        
+
+        

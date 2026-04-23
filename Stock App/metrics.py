@@ -98,11 +98,11 @@ class Metrics:
 
     # Valuation Dynamics
     def pe_ratio(self, df):
-        if "price" not in df.columns:
-            raise ValueError("The dataframe provided does not contain the price column")
+        if "marketCap" not in df.columns:
+            raise ValueError("The dataframe provided does not contain the marketCap column")
         if "netIncome" not in df.columns:
             raise ValueError("The dataframe provided does not contain the netIncome column")
-        df["peRatio"] = df["netIncome"] / df["price"].replace(0, float("nan"))
+        df["peRatio"] = df["marketCap"] / df["netIncome"].replace(0, float("nan"))
         return df
 
     # Earnings Quality
@@ -115,11 +115,13 @@ class Metrics:
         return df
 
     # Capital Allocation Efficiency
-    def rnd_yield (self, df): # revenue growth per dollar of R&D spend, lagged 2-3 yea_s
+    def rnd_yield (self, df): # revenue growth per dollar of R&D spend, lagged 2-3 years
+        # Do not have data yet 
         pass
 
     # Operational Drift
     def gross_margin_durability(self, df): # rolling standard deviation of gross margins (stability is often undervalued)
+        # Do not have data yet 
         pass
 
     # Balance Sheet Dynamics
@@ -182,5 +184,22 @@ class Metrics:
 
     # Market Structure
     def institutional_ownership_drift(self, df): # umulative insider buy/sell ratio over rolling 12 months
+        # Do not have data yet 
         pass
 
+    def calculate_all(self):
+        """This function will apply all functions to the mega df for a ticker"""
+        df = self.mega_df()
+        df = self.pe_ratio(df)
+        df = self.cash_conversion_of_earnings(df)
+        # df = self.rnd_yield(df)
+        # df = self.gross_margin_durability(df)
+        df = self.net_cash_pct_market_cap(df)
+        df = self.current_ratio(df)
+        df = self.debt_to_equity(df)
+        df = self.price_to_book(df)
+        df = self.return_on_equity(df)
+        df = self.return_on_assets(df)
+        df = self.fcf_yield(df)
+        # df = self.institutional_ownership_drift(df)
+        return df
