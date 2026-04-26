@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # Docs - https://docs.streamlit.io/develop/api-reference
-# You can have mpre than one page in streamlit - good for if we want to add some kind of "add to t212 pie" feature 
+# You can have more than one page in streamlit - good for if we want to add some kind of "add to t212 pie" feature 
 
 st.title("Stock Comparison Dashboard")
 ticker = st.text_input("Please Enter a Ticker to Search:").upper()
