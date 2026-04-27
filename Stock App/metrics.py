@@ -38,8 +38,10 @@ class Metrics:
         # Joining cash flow data 
         price = pd.read_parquet(paths["price"])
         price["date"] = pd.to_datetime(price["date"], errors="coerce")
+        price = price.sort_values("date")
         cash = pd.read_parquet(paths["cash_flow"])
         cash["acceptedDate"] = pd.to_datetime(cash["acceptedDate"], errors="coerce")
+        cash = cash.sort_values("acceptedDate")
         cash = cash[['symbol', 'acceptedDate','netIncome',
        'depreciationAndAmortization', 'deferredIncomeTax',
        'stockBasedCompensation', 'changeInWorkingCapital',

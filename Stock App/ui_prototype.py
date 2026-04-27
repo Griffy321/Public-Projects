@@ -454,3 +454,4 @@ for i, ticker in enumerate(selected):
             )
 
         st.plotly_chart(fig, use_container_width=True)
+        
