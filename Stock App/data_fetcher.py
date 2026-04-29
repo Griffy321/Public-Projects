@@ -6,7 +6,7 @@
 
 import pandas as pd
 import os
-import api_client as api
+from api import fmp as api
 import asyncio
 from datetime import datetime
 

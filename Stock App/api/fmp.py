@@ -1,4 +1,3 @@
-# I could use some form of class here not not super needed 
 import json
 from dotenv import load_dotenv
 import os
@@ -7,19 +6,17 @@ import time
 import data_fetcher
 import requests
 
-import aiohttp # for async functions and making API requests
-import asyncio # for async functions and making API requests
+import aiohttp
+import asyncio
 from pathlib import Path
 
 # Responsible for:
-# - making API requests
+# - making API requests to Financial Modeling Prep
 # - handling authentication and headers
 # - returning raw JSON responses
 # - handling request errors and response status checks
 
-# This file should know about the external provider format.
-
-load_dotenv(Path(__file__).parent / "config.env")
+load_dotenv(Path(__file__).parent.parent / "config.env")
 api_key = os.getenv("api_key")
 chart_30_min_url = os.getenv("30_min_chart_url")
 cash_flow_url = os.getenv("cash_flow_url")
@@ -32,7 +29,7 @@ balance_sheet_url = os.getenv("balance_sheet_url")
 async def get_30_min_chart(ticker: str, start_date: datetime.date | str | None = None, end_date: datetime.date | str | None = None,) -> list:
     """Fetch 30-minute OHLCV chart data for a ticker over a date range, paginated into 60-day intervals."""
     ticker = ticker.upper()
-    if start_date is None: 
+    if start_date is None:
         raise ValueError("Missing start_date. Please provide a start_date to get going in for format: 'yyyy-mm-dd'")
     if end_date is None:
         end_date = datetime.date.today()
@@ -73,7 +70,6 @@ async def get_30_min_chart(ticker: str, start_date: datetime.date | str | None =
                 print(f"HTTP error for {ticker} from {dates[0]} to {dates[1]}: {e}")
     return all_data
 
-# print(asyncio.run(get_30_min_chart("AAPL", start_date="2026-01-01", end_date="2026-02-01")))
 
 def get_cash_flow(ticker:str, limit:int=500, period:str="annual") -> json:
     """Fetch cash flow statements for a ticker. Returns parsed JSON or False on failure."""
@@ -89,19 +85,17 @@ def get_cash_flow(ticker:str, limit:int=500, period:str="annual") -> json:
     try:
         response = requests.get(cash_flow_url, params=params)
         if response.status_code == 503:
-            time.sleep(30) # wait for 30 seconds before retrying
-            response = requests.get(cash_flow_url, params=params) # retry the request
+            time.sleep(30)
+            response = requests.get(cash_flow_url, params=params)
             if response.status_code != 200:
                 print(f"Failed to retrieve cash flow data for {ticker} after retrying: {response.status_code}")
                 return False
         response.raise_for_status()
-        data = response.json() 
+        data = response.json()
         return data
     except requests.exceptions.RequestException as e:
         print(f"Error retrieving cash flow data for {ticker}: {e}")
         return False
-    
-# print(type(get_cash_flow("AAPL", limit=4, period="annual")))
 
 def get_balance_sheet(ticker:str, limit:int=500, period:str="annual") -> json:
     """Fetch balance sheet statements for a ticker. Returns parsed JSON or False on failure."""
@@ -143,8 +137,8 @@ def get_ratio_data(ticker:str, limit:int=500, period:str="annual") -> json:
     try:
         response = requests.get(ratio_url, params=params)
         if response.status_code == 503:
-            time.sleep(30) # wait for 30 seconds before retrying
-            response = requests.get(ratio_url, params=params) # retry the request
+            time.sleep(30)
+            response = requests.get(ratio_url, params=params)
             if response.status_code != 200:
                 print(f"Failed to retrieve ratio data for {ticker} after retrying: {response.status_code}")
                 return False
@@ -154,8 +148,6 @@ def get_ratio_data(ticker:str, limit:int=500, period:str="annual") -> json:
     except requests.exceptions.RequestException as e:
         print(f"Error retrieving ratio data for {ticker}: {e}")
         return False
-
-# print(type(get_ratio_data("AAPL", limit=4, period="annual")))
 
 def get_profile_data(ticker:str) -> json:
     """Fetch company profile data (sector, description, exchange, etc.) for a ticker. Returns parsed JSON or False on failure."""
@@ -167,8 +159,8 @@ def get_profile_data(ticker:str) -> json:
     try:
         response = requests.get(profile_url, params=params)
         if response.status_code == 503:
-            time.sleep(30) # wait for 30 seconds before retrying
-            response = requests.get(profile_url, params=params) # retry the request
+            time.sleep(30)
+            response = requests.get(profile_url, params=params)
             if response.status_code != 200:
                 print(f"Failed to retrieve profile data for {ticker} after retrying: {response.status_code}")
                 return False
@@ -178,8 +170,6 @@ def get_profile_data(ticker:str) -> json:
     except requests.exceptions.RequestException as e:
         print(f"Error retrieving profile data for {ticker}: {e}")
         return False
-
-# print(type(get_profile_data("AAPL")))
 
 def get_historical_mkt_cap(ticker: str, limit: int = 500, start_date: datetime.date | str | None = None, end_date: datetime.date | str | None = None) -> json:
     """Fetch historical daily market cap for a ticker. Returns parsed JSON or False on failure."""
@@ -207,5 +197,3 @@ def get_historical_mkt_cap(ticker: str, limit: int = 500, start_date: datetime.d
     except requests.exceptions.RequestException as e:
         print(f"Error retrieving historical market cap data for {ticker}: {e}")
         return False
-
-# print(type(get_historical_mkt_cap("AAPL", limit=4)))
