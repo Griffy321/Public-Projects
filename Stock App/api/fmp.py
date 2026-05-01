@@ -1,5 +1,5 @@
 import json
-from dotenv import load_dotenv
+import dotenv 
 import os
 import datetime
 import time
@@ -16,7 +16,7 @@ from pathlib import Path
 # - returning raw JSON responses
 # - handling request errors and response status checks
 
-load_dotenv(Path(__file__).parent.parent / "config.env")
+dotenv.load_dotenv(Path(__file__).parent.parent / "config.env")
 api_key = os.getenv("api_key")
 chart_30_min_url = os.getenv("30_min_chart_url")
 cash_flow_url = os.getenv("cash_flow_url")
