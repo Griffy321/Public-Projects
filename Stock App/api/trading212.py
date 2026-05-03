@@ -80,9 +80,21 @@ class TradingAccount():
 
     def update_pie(self, pie_id):
         update_url = f"https://live.trading212.com/api/v0/equity/pies/{pie_id}"
-        
-        load = {}
-        requests.post()
+        pie_info = self.get_one_pie(pie_id)
+        pie_name = pie_info.get("settings").get("name")
+        payload = {
+        "dividendCashAction": "REINVEST",
+        "goal": 0,
+        "icon": "string",
+        "instrumentShares": {
+            "AAPL_US_EQ": 0.5,
+            "MSFT_US_EQ": 0.5
+        },
+        "name": str(pie_name + "1")
+        }
+        responce = requests.post(url=update_url, json=payload, headers=self.auth_header)
+        print(responce.status_code)
+        print(responce.json())
 
 account = TradingAccount(api_key, t212_secret_key)
-print(account.get_one_pie())
+print(account.update_pie(pie_id=7873366))
