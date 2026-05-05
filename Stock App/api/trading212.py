@@ -1,12 +1,10 @@
 import json
 from dotenv import load_dotenv
-
 import os
 import datetime
 import requests
 from pathlib import Path
 import time
-
 import base64
 
 # Responsible for:
@@ -47,15 +45,43 @@ class TradingAccount():
                 self.pies.append({pie_id : pie_name})
         print(self.pies)
 
+    def try_request(self, url, pie_id=None):
+        retries = 0
+        response = requests.get(url=url, headers=self.auth_header)
+        while response.status_code == 429:
+            if retries < 10:
+                retries += 1
+                print(f"Request failed with 429. Retrying... Attempt {retries}")
+                time.sleep(15)
+                response = requests.get(url=url, headers=self.auth_header)  # retry request in the while statment 
+            elif response.status_code in [401, 403, 408]:
+                print(f"Request failed with responce code: {response.status_code}")
+                return {}
+            else:
+                print(f"Request failed 10 times. Endpoint returned status code: {response.status_code}")
+                return {}
+        return response
+    
+    def try_post(self, url, payload):
+        retries = 0
+        response = requests.post(url=url, json=payload, headers=self.auth_header) 
+        while response.status_code == 429:
+            if retries < 10:
+                retries += 1 # add a new try 
+                print(f"Post failed with 429. Retrying... Attempt {retries}")
+                time.sleep(15) # sleep before the retry 
+                response = requests.post(url=url, json=payload, headers=self.auth_header)
+            elif response.status_code in [401, 403, 408]:
+                print(f"Request failed with responce code: {response.status_code}")
+                return{}
+            else:
+                print(f"Request failed 10 times. Endpoint returned status code: {response.status_code}")
+                return {}
+        return response    
+
     def get_all_pies(self):
         pie_url = "https://live.trading212.com/api/v0/equity/pies"
-        response = requests.get(url=pie_url, headers=self.auth_header)
-        if response.status_code == 429:
-            time.sleep(6)
-            response = requests.get(url=pie_url, headers=self.auth_header)
-        if response.status_code != 200:
-            print(f"Request to trading 212 api did not work. Status: {response.status_code}")
-            return {}
+        response = self.try_request(url = pie_url)
         return response.json()
 
     def get_one_pie(self, pie_id=None):
@@ -69,32 +95,47 @@ class TradingAccount():
             pie_id = self.pies[index].keys()
             pie_id = next(iter(pie_id))
         pie_url = f"https://live.trading212.com/api/v0/equity/pies/{pie_id}"
-        response = requests.get(url=pie_url, headers=self.auth_header)
-        if response.status_code == 429:
-            time.sleep(6)
-            response = requests.get(url=pie_url, headers=self.auth_header)
-        if response.status_code != 200:
-            print(f"Request to trading 212 api did not work. Status: {response.status_code}")
-            return []
+        response = self.try_request(url = pie_url)
         return response.json()
 
     def update_pie(self, pie_id):
+        now = datetime.datetime.strftime(datetime.datetime.now(), format="%Y-%m-%dT%H:%M:%S")
         update_url = f"https://live.trading212.com/api/v0/equity/pies/{pie_id}"
         pie_info = self.get_one_pie(pie_id)
-        pie_name = pie_info.get("settings").get("name")
-        payload = {
-        "dividendCashAction": "REINVEST",
-        "goal": 0,
-        "icon": "string",
-        "instrumentShares": {
-            "AAPL_US_EQ": 0.5,
-            "MSFT_US_EQ": 0.5
-        },
-        "name": str(pie_name + "1")
-        }
-        responce = requests.post(url=update_url, json=payload, headers=self.auth_header)
-        print(responce.status_code)
-        print(responce.json())
+        settings = pie_info.get("settings")
+        if " : " not in settings.get("name"): 
+            payload = {
+            "dividendCashAction": settings.get("dividendCashAction"),
+            "goal": settings.get("goal"),
+            "icon": settings.get("icon"),
+            "instrumentShares": {
+                "AAPL_US_EQ": 0.5,
+                "MSFT_US_EQ": 0.5
+                },
+            "name": settings.get("name") + " : " + now
+            }
+        else:
+            name = settings.get("name").split(" : ")
+            name[1] = now
+            payload = {
+            "dividendCashAction": settings.get("dividendCashAction"),
+            "goal": settings.get("goal"),
+            "icon": settings.get("icon"),
+            "instrumentShares": {
+                "AAPL_US_EQ": 0.5,
+                "MSFT_US_EQ": 0.5
+                },
+            "name": name[0] + " : " + name[1]
+            }
+        response = self.try_post(url=update_url, payload=payload)
+        return response.json()
+    
+    def fetch_tickers(self):
+        url = "https://live.trading212.com/api/v0/equity/metadata/instruments"
+        response = self.try_request(url)
+        return response.json()
+
+# 7873366 - API Test Pie
 
 account = TradingAccount(api_key, t212_secret_key)
-print(account.update_pie(pie_id=7873366))
+print(account.fetch_tickers())
