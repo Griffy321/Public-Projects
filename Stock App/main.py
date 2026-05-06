@@ -1,5 +1,5 @@
 import pandas as pd
-import data_fetcher
+from data_functions import data_fetcher
 import asyncio
 from datetime import datetime
 from metrics import Metrics

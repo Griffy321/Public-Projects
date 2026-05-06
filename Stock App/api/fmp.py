@@ -1,11 +1,10 @@
 import json
-import dotenv 
+import dotenv
 import os
 import datetime
 import time
-import data_fetcher
 import requests
-
+import pandas as pd
 import aiohttp
 import asyncio
 from pathlib import Path
@@ -26,6 +25,24 @@ historical_mkt_cap_url = os.getenv("historical_mkt_cap")
 balance_sheet_url = os.getenv("balance_sheet_url")
 
 
+def build_intervals(start_date: datetime.date = None, end_date: datetime.date = None, num_days: int = 60) -> list:
+    """Split a date range into chunks of num_days, returning a list of [start, end] string pairs."""
+    try:
+        start_date = pd.to_datetime(start_date)
+        end_date = pd.to_datetime(end_date)
+    except Exception as e:
+        print(f"Error converting dates: {e}")
+        return []
+    num_days = pd.Timedelta(days=num_days)
+    date_list = []
+    next_date = start_date
+    while start_date <= end_date:
+        next_date = start_date + num_days
+        date_list.append([start_date.strftime("%Y-%m-%d"), next_date.strftime("%Y-%m-%d")])
+        start_date = start_date + num_days + pd.Timedelta(days=1)
+    return date_list
+
+
 async def get_30_min_chart(ticker: str, start_date: datetime.date | str | None = None, end_date: datetime.date | str | None = None,) -> list:
     """Fetch 30-minute OHLCV chart data for a ticker over a date range, paginated into 60-day intervals."""
     ticker = ticker.upper()
@@ -38,7 +55,7 @@ async def get_30_min_chart(ticker: str, start_date: datetime.date | str | None =
     if isinstance(end_date, str):
         end_date = datetime.date.fromisoformat(end_date)
     all_data = []
-    intervals = data_fetcher.build_intervals(start_date, end_date, num_days=15)
+    intervals = build_intervals(start_date, end_date, num_days=15)
     async with aiohttp.ClientSession() as session:
         for dates in intervals:
             params = {

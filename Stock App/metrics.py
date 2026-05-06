@@ -5,7 +5,7 @@
 
 import pandas as pd
 import os
-import data_fetcher
+from data_functions import data_fetcher
 from datetime import datetime as dt
 from datetime import timedelta as td
 

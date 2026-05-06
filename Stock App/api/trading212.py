@@ -1,4 +1,3 @@
-import json
 from dotenv import load_dotenv
 import os
 import datetime
@@ -6,6 +5,7 @@ import requests
 from pathlib import Path
 import time
 import base64
+import sqlite3 as sql
 
 # Responsible for:
 # - making API requests to Trading 212
@@ -135,7 +135,5 @@ class TradingAccount():
         response = self.try_request(url)
         return response.json()
 
-# 7873366 - API Test Pie
-
-account = TradingAccount(api_key, t212_secret_key)
-print(account.fetch_tickers())
+# account = TradingAccount(api_key, t212_secret_key)
+# print(account.fetch_tickers())

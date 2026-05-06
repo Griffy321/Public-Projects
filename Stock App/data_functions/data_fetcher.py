@@ -7,16 +7,17 @@
 import pandas as pd
 import os
 from api import fmp as api
-import asyncio
-from datetime import datetime
+from pathlib import Path
 
-# TODO: convert these hardcoded paths to pathlib
-price_data_path         = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/price_data"
-cash_flow_data_path     = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/cash_flow_data"
-ratio_data_path         = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/ratio_data"
-profile_data_path       = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/profile_data"
-mkt_cap_data_path       = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/mkt_cap_data"
-balance_sheet_data_path = "C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/balance_sheet_data"
+parent_path = Path(__file__).parent.parent.joinpath("data/")
+
+print(parent_path)
+price_data_path         = parent_path.joinpath("price_data")
+cash_flow_data_path     = parent_path.joinpath("cash_flow_data")
+ratio_data_path         = parent_path.joinpath("ratio_data")
+profile_data_path       = parent_path.joinpath("profile_data")
+mkt_cap_data_path       = parent_path.joinpath("mkt_cap_data")
+balance_sheet_data_path = parent_path.joinpath("balance_sheet_data")
 folder_paths = [price_data_path, cash_flow_data_path, ratio_data_path, profile_data_path, mkt_cap_data_path, balance_sheet_data_path]
 
 def load_data(filename:str, path:str) -> pd.DataFrame:
@@ -30,23 +31,6 @@ def check_existence(filename:str, path:str) -> bool:
     """Return True if the parquet file for the given filename exists."""
     return os.path.exists(f"{path}/{filename}.parquet")
 
-def build_intervals(start_date:datetime.date=None, end_date:datetime.date=None, num_days:int=60) -> list:
-    """Split a date range into chunks of num_days, returning a list of [start, end] string pairs."""
-    try:
-        start_date = pd.to_datetime(start_date)
-        end_date = pd.to_datetime(end_date)
-    except Exception as e:
-        print(f"Error converting dates: {e}")
-        return []
-    num_days = pd.Timedelta(days=num_days)
-    date_list = []
- 
-    next_date = start_date
-    while start_date <= end_date:
-        next_date = start_date + num_days 
-        date_list.append([start_date.strftime("%Y-%m-%d"), next_date.strftime("%Y-%m-%d")])
-        start_date = start_date + num_days + pd.Timedelta(days=1) # adds a day to not request duplicate rows 
-    return date_list
 
 def to_dataframe(data_list: list) -> pd.DataFrame:
     df = pd.DataFrame(data_list)
