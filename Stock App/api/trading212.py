@@ -18,7 +18,7 @@ api_key = os.getenv("t212_api_key")
 t212_secret_key = os.getenv("t212_secret_key")
 
 class TradingAccount():
-    def __init__(self, api_key, secret_key):
+    def __init__(self, api_key=api_key, secret_key=t212_secret_key):
         credentials = base64.b64encode(f"{api_key}:{secret_key}".encode()).decode()
         self.auth_header = {"Authorization": f"Basic {credentials}"}
         self.pies = []
@@ -135,5 +135,5 @@ class TradingAccount():
         response = self.try_request(url)
         return response.json()
 
-# account = TradingAccount(api_key, t212_secret_key)
+# account = TradingAccount()
 # print(account.fetch_tickers())

@@ -10,7 +10,7 @@ from dateutil.relativedelta import relativedelta
 from pathlib import Path
 
 from metrics import Metrics
-import data_fetcher
+from data_functions import data_fetcher
 
 # ─── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Stock Analyser", layout="wide", initial_sidebar_state="collapsed")

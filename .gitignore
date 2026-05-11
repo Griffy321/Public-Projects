@@ -3,6 +3,7 @@ Stock App/__pycache__/
 Stock App/data/
 Stock App/.gitignore
 Stock App/config.env
+Stock App/stuff_to_add.md
 
 # General Python
 __pycache__/
