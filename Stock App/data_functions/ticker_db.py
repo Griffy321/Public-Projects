@@ -5,31 +5,125 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent)) # forces Python to go up 2 parents to look for the right thing to import (usualy just goes up 1 level from the current file)
 sql_db_path = Path(__file__).parent.parent.joinpath("data/tickers/tickers.db") 
 
-from api import trading212 as t212
+from api.trading212 import TradingAccount
 
-connection = sqlite3.connect(sql_db_path)
-cursor = connection.cursor()
-cursor.execute("DROP TABLE IF EXISTS tickers")
-cursor.execute("CREATE TABLE tickers(isin PRIMARY KEY, ticker, type, workingScheduleId, currencyCode, name, shortName, maxOpenQuantity, extendedHours, addedOn)")
 
-data = t212.TradingAccount().fetch_tickers()
+class TickerDB(TradingAccount):
+    def __init__(self, 
+                 connection=sqlite3.connect(sql_db_path),
+                 cursor = sqlite3.connect(sql_db_path).cursor()
+                 ):
+        self.connection = connection # db connection
+        self.cursor = cursor # cursor connection for querying 
 
-deduped = []
-isins = []
-dupes = []
-for dict in data:
-    isin = dict.get("isin")
-    if isin in isins:
-        dupes.append(isin) # need to investigate these, isins should be distinct 
-    else:
-        isins.append(isin)
-        deduped.append(dict)
+    def create_db(self):
+        self.cursor.execute("""
+                            CREATE TABLE if not exists tickers (
+                                ticker, 
+                                isin, 
+                                type, 
+                                workingScheduleId, 
+                                currencyCode, 
+                                name, 
+                                shortName, 
+                                maxOpenQuantity, 
+                                extendedHours, 
+                                addedOn, 
+                                PRIMARY KEY(ticker, isin) 
+                            )""") # setting the primary key makes sure we cannot insert dupes 
 
-# setting the primary key makes sure we cannot insert dupes anywhere + we dedupe the data 
-cursor.executemany("INSERT INTO tickers VALUES(:isin, :ticker, :type, :workingScheduleId, :currencyCode, :name, :shortName, :maxOpenQuantity,:extendedHours, :addedOn)", deduped) 
+    def update_ticker_db(self):
+        data = self.fetch_tickers()
+        self.cursor.execute("""
+                            insert into tickers values (
+                            :ticker, 
+                            :isin, 
+                            :type, 
+                            :workingScheduleId, 
+                            :currencyCode, 
+                            :name, 
+                            :shortName, 
+                            :maxOpenQuantity, 
+                            :extendedHours, 
+                            :addedOn
+                            )
+                            """, data)
+        self.connection.commit()
 
-connection.commit() # this is needed so the insert stays in the table 
-cursor.execute("SELECT * FROM tickers")
-query_results = cursor.fetchall()
+    # get_by_ticker(ticker) - return full instrument row for a given ticker string
+    def get_by_ticker(self, ticker:str): 
+        if ticker is None:
+            raise ValueError("Please provide a ticker to be searched")
+        query = f"""
+                select
+                    *
+                from
+                    tickers
+                where
+                    upper(shortName) like upper(('{ticker}%'))
+                """
+        results = self.cursor.execute(query).fetchall()
+        return results
+    
+    # get_by_isin(isin) - return all instruments matching an ISIN (may be >1 if multi-exchange)
+    def get_by_isin(self, isin:str): 
+        if isin is None:
+            raise ValueError("Please provide an isin to be searched")
+        query = f"""
+                select
+                    *
+                from
+                    tickers
+                where
+                    upper(shortName) like upper(('{isin}%'))
+                """
+        results = self.cursor.execute(query).fetchall()
+        return results
 
-print(dupes)
+    # is_tradeable(isin) - return bool, check if a given ISIN exists in the tickers table
+    def is_tradeable(self, isin:str):
+        if not isin:
+            raise ValueError("Please provide an ISIN")
+        
+        if isin:
+            query = f"""
+                    select
+                        *
+                    from
+                        tickers
+                    where 
+                        upper(isin) like upper(('{isin}'))
+                    """
+            results = self.cursor.execute(query).fetchall()
+            if len(results) > 0:
+                return True
+            else:
+                return False    
+
+    # TODO: get_by_currency(currency_code) - return all instruments traded in a given currency e.g. "GBP", "USD"
+    def get_by_currency(self, currency_code:str):
+        pass
+
+    # TODO: get_extended_hours() - return all instruments where extendedHours is true
+    def get_extended_hours(self, extended_hours:bool):
+        pass
+
+    # TODO: get_by_type(type) - filter instruments by type e.g. ETF, STOCK
+    def get_by_type(self, type:str):
+        pass
+
+    # TODO: search_by_name(name) - fuzzy search on the name field, useful for a stock picker UI
+    def search_by_name(self, name:str):
+        pass
+
+    # TODO: filter_tradeables(isin_list) - given a list of ISINs (e.g. from FMP portfolio data), return which ones are available on T212
+    def filter_tradeables(self, isin_list:list):
+        pass
+
+    # TODO: get_max_quantity(isin) - return maxOpenQuantity for an instrument, useful before placing a trade
+    def get_max_quantity(self, isin:str):
+        pass
+
+
+# results = TickerDB().is_tradeable(isin="US0378331005")
+# print(results)

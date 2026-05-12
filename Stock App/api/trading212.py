@@ -98,7 +98,7 @@ class TradingAccount():
         response = self.try_request(url = pie_url)
         return response.json()
 
-    def update_pie(self, pie_id):
+    def update_pie(self, pie_id:str, instrument_shares:dict):
         now = datetime.datetime.strftime(datetime.datetime.now(), format="%Y-%m-%dT%H:%M:%S")
         update_url = f"https://live.trading212.com/api/v0/equity/pies/{pie_id}"
         pie_info = self.get_one_pie(pie_id)
@@ -108,10 +108,7 @@ class TradingAccount():
             "dividendCashAction": settings.get("dividendCashAction"),
             "goal": settings.get("goal"),
             "icon": settings.get("icon"),
-            "instrumentShares": {
-                "AAPL_US_EQ": 0.5,
-                "MSFT_US_EQ": 0.5
-                },
+            "instrumentShares": instrument_shares,
             "name": settings.get("name") + " : " + now
             }
         else:
@@ -121,10 +118,7 @@ class TradingAccount():
             "dividendCashAction": settings.get("dividendCashAction"),
             "goal": settings.get("goal"),
             "icon": settings.get("icon"),
-            "instrumentShares": {
-                "AAPL_US_EQ": 0.5,
-                "MSFT_US_EQ": 0.5
-                },
+            "instrumentShares": instrument_shares,
             "name": name[0] + " : " + name[1]
             }
         response = self.try_post(url=update_url, payload=payload)
