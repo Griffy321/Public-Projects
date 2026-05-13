@@ -1,6 +1,7 @@
 import sqlite3
 import sys
 from pathlib import Path
+from decimal import Decimal
 
 sys.path.insert(0, str(Path(__file__).parent.parent)) # forces Python to go up 2 parents to look for the right thing to import (usualy just goes up 1 level from the current file)
 sql_db_path = Path(__file__).parent.parent.joinpath("data/tickers/tickers.db") 
@@ -60,7 +61,7 @@ class TickerDB(TradingAccount):
                 from
                     tickers
                 where
-                    upper(shortName) like upper(('{ticker}%'))
+                    upper(ticker) like upper(('{ticker}%'))
                 """
         results = self.cursor.execute(query).fetchall()
         return results
@@ -124,6 +125,30 @@ class TickerDB(TradingAccount):
     def get_max_quantity(self, isin:str):
         pass
 
+    def take_pct(self, pct):
+        try:
+            pct = Decimal(pct)
+        except Exception as e:
+            print(f"Unable to confert {pct} to data type Decimal")
+            return None
+        if pct > Decimal(1.0):
+            print(f"The size of a single position cannot be over 100%. Please lower it.")
+            return None
+        
+        pct = round(pct, ndigits=6)
+        return pct
 
-# results = TickerDB().is_tradeable(isin="US0378331005")
-# print(results)
+    def get_candidates(self, ticker:str):
+        if not ticker:
+            raise ValueError("Please provide either a ticker to search.")
+
+        results = self.get_by_ticker(ticker=ticker)
+        return [{"ticker" : r[0], "name" : r[5]} for r in results]
+
+
+# add FastAPI intergration between frount and backend 
+
+
+results = TickerDB().get_candidates(ticker="aap")
+print(results)
+print(type(results))
