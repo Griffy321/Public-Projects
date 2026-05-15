@@ -31,6 +31,19 @@ def check_existence(filename:str, path:str) -> bool:
     """Return True if the parquet file for the given filename exists."""
     return os.path.exists(f"{path}/{filename}.parquet")
 
+# TODO (data freshness): add is_stale(ticker) -> bool
+# Read the latest 'date' value from data/price_data/{ticker}.parquet and return
+# True if it is more than 1 business day behind today. This replaces the blunt
+# file-existence check in app.py:has_local_data with a date-aware equivalent.
+# Use pandas BDay or numpy busday_count to skip weekends.
+
+# TODO (data freshness): add fetch_delta(ticker) to pull only the missing window.
+# Determine start = latest_cached_date + 1 business day, end = today, then call
+# get_company_data(ticker, start, end). update_save_files already handles
+# merge + deduplication so no changes needed there.
+# Call fetch_delta from the app wherever has_local_data returns True but
+# is_stale also returns True.
+
 
 def to_dataframe(data_list: list) -> pd.DataFrame:
     df = pd.DataFrame(data_list)

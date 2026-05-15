@@ -84,6 +84,12 @@ class TradingAccount():
         response = self.try_request(url = pie_url)
         return response.json()
 
+    # TODO (UI contract): get_pie_list() — wrap get_all_pies() and return a clean
+    # list[dict] of {"id": str, "name": str} for each pie. The UI pie dropdown calls
+    # TickerDB().get_pie_list() and expects exactly that shape.
+    # get_one_pie(pie_id) already returns settings.name, so iterate get_all_pies()
+    # and pull id + settings.name for each entry.
+
     def get_one_pie(self, pie_id=None):
         if pie_id is None:
             self.update_pie_ids(self.get_all_pies())
@@ -98,6 +104,10 @@ class TradingAccount():
         response = self.try_request(url = pie_url)
         return response.json()
 
+    # NOTE: update_pie replaces the entire instrumentShares payload — it does NOT merge.
+    # If you want "add to pie" to preserve existing holdings, fetch the current pie
+    # composition first (get_one_pie), merge the new entries in, then call update_pie
+    # with the combined dict. Decide this before wiring add_stocks_to_pie (see ticker_db.py).
     def update_pie(self, pie_id:str, instrument_shares:dict):
         now = datetime.datetime.strftime(datetime.datetime.now(), format="%Y-%m-%dT%H:%M:%S")
         update_url = f"https://live.trading212.com/api/v0/equity/pies/{pie_id}"

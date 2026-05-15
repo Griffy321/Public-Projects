@@ -276,6 +276,10 @@ if "tickers" not in st.session_state:
     st.session_state.tickers = []
 if "cache_v" not in st.session_state:
     st.session_state.cache_v = 0
+if "pie_selections" not in st.session_state:
+    st.session_state.pie_selections = {}
+if "pie_search_results" not in st.session_state:
+    st.session_state.pie_search_results = []
 
 # ─── Header ────────────────────────────────────────────────────────────────────
 st.title("Stock Analyser")
@@ -340,7 +344,7 @@ if not live:
 
 # ─── Tabs ──────────────────────────────────────────────────────────────────────
 st.divider()
-tabs = st.tabs(["Compare"] + live)
+tabs = st.tabs(["Compare"] + live + ["T212 Pies"])
 
 # ── Compare ──────────────────────────────────────────────────────────────────
 with tabs[0]:
@@ -479,3 +483,142 @@ for i, ticker in enumerate(live):
 
         st.plotly_chart(single_chart(ticker, df, overlays, start_date, end_date),
                         use_container_width=True)
+
+# ── T212 Pies ─────────────────────────────────────────────────────────────────
+with tabs[-1]:
+    st.subheader("Trading 212 Pies")
+
+    # ── Pie selector ──────────────────────────────────────────────────────────
+    pie_map = {}
+    try:
+        from data_functions.ticker_db import TickerDB as _TickerDB
+        pie_map = {p["name"]: p["id"] for p in _TickerDB().get_pie_list()}
+    except Exception:
+        pass
+
+    col_pie, _ = st.columns([2, 3])
+    with col_pie:
+        if pie_map:
+            selected_pie_name = st.selectbox("Pie", options=list(pie_map),
+                                             label_visibility="collapsed")
+            selected_pie_id = pie_map[selected_pie_name]
+        else:
+            st.selectbox("Pie", options=["— implement get_pie_list() —"],
+                         disabled=True, label_visibility="collapsed")
+            selected_pie_id = None
+
+    st.divider()
+
+    # ── Stock selection ───────────────────────────────────────────────────────
+    col_qs, col_srch = st.columns(2)
+
+    with col_qs:
+        st.markdown("**From loaded stocks**")
+        loaded_picks = st.multiselect(
+            "loaded", options=live,
+            key="pie_loaded_ms", label_visibility="collapsed"
+        )
+
+    with col_srch:
+        st.markdown("**Additional ticker**")
+        s_col, b_col = st.columns([3, 1])
+        with s_col:
+            search_q = st.text_input(
+                "search", placeholder="e.g. NVDA",
+                key="pie_search_input", label_visibility="collapsed"
+            ).upper().strip()
+        with b_col:
+            st.write("")
+            search_hit = st.button("Search", key="pie_srch_btn", use_container_width=True)
+
+    if search_hit and search_q:
+        try:
+            from data_functions.ticker_db import TickerDB as _TickerDB
+            st.session_state.pie_search_results = _TickerDB().get_candidates(search_q)
+        except Exception as exc:
+            st.error(f"Search failed: {exc}")
+            st.session_state.pie_search_results = []
+
+    if st.session_state.pie_search_results:
+        results = st.session_state.pie_search_results
+        options_map = {f"{r['ticker']}  —  {r['name']}": r["ticker"] for r in results}
+        pick_col, add_col = st.columns([4, 1])
+        with pick_col:
+            chosen_label = st.selectbox("result", options=list(options_map),
+                                        key="pie_result_sel", label_visibility="collapsed")
+        with add_col:
+            st.write("")
+            if st.button("+ Add", key="pie_add_extra", use_container_width=True):
+                ticker_to_add = options_map[chosen_label]
+                if ticker_to_add not in st.session_state.pie_selections:
+                    st.session_state.pie_selections[ticker_to_add] = None
+                st.session_state.pie_search_results = []
+                st.rerun()
+
+    # ── Sync loaded multiselect → pie_selections ──────────────────────────────
+    for t in loaded_picks:
+        if t not in st.session_state.pie_selections:
+            st.session_state.pie_selections[t] = None
+
+    for t in [t for t in live if t not in loaded_picks]:
+        if t in st.session_state.pie_selections:
+            del st.session_state.pie_selections[t]
+            st.session_state.pop(f"pie_w_{t}", None)
+
+    # ── Selected stocks table ─────────────────────────────────────────────────
+    if st.session_state.pie_selections:
+        st.divider()
+        st.markdown(f"**Selected  ({len(st.session_state.pie_selections)} stocks)**")
+
+        n = len(st.session_state.pie_selections)
+        default_w = round(100.0 / n, 1)
+        for t in st.session_state.pie_selections:
+            if f"pie_w_{t}" not in st.session_state:
+                st.session_state[f"pie_w_{t}"] = default_w
+
+        h1, h2, h3 = st.columns([2, 2, 1])
+        h1.markdown("**Ticker**")
+        h2.markdown("**Weight (%)**")
+
+        total_w = 0.0
+        for ticker in list(st.session_state.pie_selections):
+            r1, r2, r3 = st.columns([2, 2, 1])
+            r1.write(ticker)
+            r2.number_input(
+                "w", min_value=0.0, max_value=100.0, step=1.0,
+                key=f"pie_w_{ticker}", label_visibility="collapsed"
+            )
+            total_w += st.session_state.get(f"pie_w_{ticker}", 0.0)
+            if r3.button("✕", key=f"pie_rm_{ticker}"):
+                del st.session_state.pie_selections[ticker]
+                st.session_state.pop(f"pie_w_{ticker}", None)
+                st.rerun()
+
+        weight_ok = abs(total_w - 100.0) < 0.5
+        if weight_ok:
+            st.success(f"Total: {total_w:.1f}%  ✓")
+        else:
+            st.warning(f"Total: {total_w:.1f}%  —  must equal 100%")
+
+        st.write("")
+
+        if st.button("+ Add to Pie", type="primary", disabled=not (weight_ok and selected_pie_id),
+                     key="pie_submit"):
+            selections = {
+                t: round(st.session_state.get(f"pie_w_{t}", 0.0) / 100, 6)
+                for t in st.session_state.pie_selections
+            }
+            try:
+                from data_functions.ticker_db import TickerDB as _TickerDB
+                _TickerDB().add_stocks_to_pie(selected_pie_id, selections)
+                st.success("Stocks added to pie!")
+                for t in list(st.session_state.pie_selections):
+                    st.session_state.pop(f"pie_w_{t}", None)
+                st.session_state.pie_selections = {}
+                st.rerun()
+            except AttributeError:
+                st.info("Backend not ready — implement `add_stocks_to_pie()` in TickerDB.")
+            except Exception as exc:
+                st.error(f"Failed: {exc}")
+    else:
+        st.caption("No stocks selected — use the controls above to build your pie.")
