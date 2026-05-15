@@ -2,6 +2,7 @@ import sqlite3
 import sys
 from pathlib import Path
 from decimal import Decimal
+from fastapi import FastAPI
 
 sys.path.insert(0, str(Path(__file__).parent.parent)) # forces Python to go up 2 parents to look for the right thing to import (usualy just goes up 1 level from the current file)
 sql_db_path = Path(__file__).parent.parent.joinpath("data/tickers/tickers.db") 
