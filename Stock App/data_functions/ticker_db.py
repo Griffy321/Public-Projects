@@ -170,6 +170,6 @@ class TickerDB(TradingAccount):
 # add FastAPI intergration between frount and backend 
 
 
-results = TickerDB().get_candidates(ticker="aap")
-print(results)
-print(type(results))
+# results = TickerDB().get_candidates(ticker="aap")
+# print(results)
+# print(type(results))

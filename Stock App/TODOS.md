@@ -2,23 +2,6 @@
 
 ---
 
-## Data Layer
-
-### Data Freshness (Bug Fix)
-- [ ] `is_stale(ticker) -> bool` in `data_functions/data_fetcher.py`
-  - Read latest date from `data/price_data/{ticker}.parquet`
-  - Return True if more than 1 business day behind today
-  - Use `pandas.tseries.offsets.BDay` or `numpy.busday_count` for weekend handling
-- [ ] `fetch_delta(ticker)` in `data_functions/data_fetcher.py`
-  - Determine `start = latest_cached_date + 1 BDay`, `end = today`
-  - Call `get_company_data(ticker, start, end)`
-  - `update_save_files` handles merge/dedup — no changes needed there
-- [ ] Update load logic in `app.py` (the `add_clicked` block)
-  - Currently: fetch only if `not has_local_data(ticker)`
-  - Change to: fetch if not exists OR `is_stale(ticker)`, using `fetch_delta` for the stale case
-
----
-
 ## T212 Pies (UI already built — backend contracts needed)
 
 - [ ] `get_pie_list() -> list[dict]` on `TradingAccount` in `api/trading212.py`

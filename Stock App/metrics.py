@@ -35,11 +35,10 @@ class Metrics:
                 print(end)
                 data_fetcher.get_company_data(ticker=ticker, start_date=start, end_date=end)
         
-        # Joining cash flow data 
-        price = pd.read_parquet(paths["price"])
-        price["date"] = pd.to_datetime(price["date"], errors="coerce")
+        # Joining cash flow data
+        price = data_fetcher.load_data(ticker, data_fetcher.price_data_path)
         price = price.sort_values("date")
-        cash = pd.read_parquet(paths["cash_flow"])
+        cash = data_fetcher.load_data(ticker, data_fetcher.cash_flow_data_path)
         cash["acceptedDate"] = pd.to_datetime(cash["acceptedDate"], errors="coerce")
         cash = cash.sort_values("acceptedDate")
         cash = cash[['symbol', 'acceptedDate','netIncome',
@@ -63,8 +62,7 @@ class Metrics:
         price_cash = pd.merge_asof(price, cash, left_on="date", right_on="acceptedDate", direction='backward').sort_values(by="date", ascending=True)
 
         # Joining market cap
-        mkt = pd.read_parquet(paths["mkt_cap"])
-        mkt["date"] = pd.to_datetime(mkt["date"], errors="coerce")
+        mkt = data_fetcher.load_data(ticker, data_fetcher.mkt_cap_data_path)
         mkt["date_plus_1"] = mkt["date"] + pd.Timedelta(days=1) # adding one day to have the market cap on the last day show for the current day 
         mkt = mkt[["date_plus_1", "marketCap"]].sort_values(by="date_plus_1", ascending=True)
 
@@ -72,7 +70,7 @@ class Metrics:
         price_mkt = price_mkt.drop(columns=["date_plus_1"])
 
         # Joining balance sheet
-        balance = pd.read_parquet(paths["balance_sheet"])
+        balance = data_fetcher.load_data(ticker, data_fetcher.balance_sheet_data_path)
         balance["acceptedDate"] = pd.to_datetime(balance["acceptedDate"])
         balance = balance[['acceptedDate', 'cashAndCashEquivalents',
        'shortTermInvestments', 'cashAndShortTermInvestments', 'netReceivables',
