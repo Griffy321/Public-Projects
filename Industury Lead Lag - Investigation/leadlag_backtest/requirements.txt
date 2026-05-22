@@ -1,0 +1,9 @@
+yfinance>=1.0
+pandas
+numpy
+matplotlib
+seaborn
+requests
+python-dotenv
+pyarrow
+tqdm
