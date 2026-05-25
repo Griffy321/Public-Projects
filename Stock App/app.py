@@ -194,7 +194,7 @@ def compare_chart(tickers, df_dict, overlay_label, start, end):
     if has_overlay:
         _, _, unit, _ = overlay_def
         fig.update_yaxes(title_text=f"{overlay_label} ({unit})", secondary_y=True,
-                         gridcolor="#2a2a2a", color="#aaa", showgrid=False)
+                        gridcolor="#2a2a2a", color="#aaa", showgrid=False)
     fig.update_xaxes(gridcolor="#2a2a2a", color="#aaa")
     _chart_style(fig)
     return fig
@@ -232,7 +232,7 @@ def single_chart(ticker, df, overlays, start, end):
 
     if has_overlay:
         fig.update_yaxes(title_text="Metric value", secondary_y=True,
-                         gridcolor="#2a2a2a", color="#aaa", showgrid=False)
+                        gridcolor="#2a2a2a", color="#aaa", showgrid=False)
     fig.update_xaxes(gridcolor="#2a2a2a", color="#aaa")
     _chart_style(fig)
     return fig
@@ -287,13 +287,13 @@ st.title("Stock Analyser")
 col_ticker, col_from, col_to, col_add, col_clear = st.columns([2, 1.4, 1.4, 1, 1])
 with col_ticker:
     new_ticker = st.text_input("Add stock", placeholder="Ticker e.g. AAPL",
-                               label_visibility="collapsed").upper().strip()
+                            label_visibility="collapsed").upper().strip()
 with col_from:
     start_date = st.date_input("From", value=(datetime.today() - relativedelta(months=6)).date(),
-                               format="YYYY-MM-DD", label_visibility="collapsed")
+                            format="YYYY-MM-DD", label_visibility="collapsed")
 with col_to:
     end_date = st.date_input("To", value=datetime.today().date(),
-                             format="YYYY-MM-DD", label_visibility="collapsed")
+                            format="YYYY-MM-DD", label_visibility="collapsed")
 with col_add:
     add_clicked = st.button("Add Stock", use_container_width=True, type="primary")
 with col_clear:
@@ -377,8 +377,8 @@ with tabs[0]:
     with col_r:
         st.write("")
         overlay_sel = st.selectbox("Overlay metric on chart",
-                                   options=["None"] + OVERLAY_LABELS,
-                                   index=0, key="compare_overlay")
+                                    options=["None"] + OVERLAY_LABELS,
+                                    index=0, key="compare_overlay")
 
     overlay_arg = None if overlay_sel == "None" else overlay_sel
     st.plotly_chart(compare_chart(live, df_map, overlay_arg, start_date, end_date),
@@ -414,8 +414,8 @@ for i, ticker in enumerate(live):
                 st.caption(sector)
         with col_price:
             st.metric("Price",
-                      f"${price_val:,.2f}" if not pd.isna(price_val) else "N/A",
-                      delta=f"{day_chg:+.2f}%" if not pd.isna(day_chg) else None)
+                        f"${price_val:,.2f}" if not pd.isna(price_val) else "N/A",
+                        delta=f"{day_chg:+.2f}%" if not pd.isna(day_chg) else None)
         with col_cap:
             st.metric("Market Cap", fmt_currency(mkt_cap))
         with col_rm:
@@ -479,7 +479,7 @@ for i, ticker in enumerate(live):
             st.markdown("**Price History**")
         with col_ov:
             overlays = st.multiselect("Overlay metrics", options=OVERLAY_LABELS,
-                                      default=[], key=f"ov_{ticker}")
+                                        default=[], key=f"ov_{ticker}")
 
         st.plotly_chart(single_chart(ticker, df, overlays, start_date, end_date),
                         use_container_width=True)
@@ -500,11 +500,11 @@ with tabs[-1]:
     with col_pie:
         if pie_map:
             selected_pie_name = st.selectbox("Pie", options=list(pie_map),
-                                             label_visibility="collapsed")
+                                            label_visibility="collapsed")
             selected_pie_id = pie_map[selected_pie_name]
         else:
             st.selectbox("Pie", options=["— implement get_pie_list() —"],
-                         disabled=True, label_visibility="collapsed")
+                        disabled=True, label_visibility="collapsed")
             selected_pie_id = None
 
     st.divider()
@@ -603,7 +603,7 @@ with tabs[-1]:
         st.write("")
 
         if st.button("+ Add to Pie", type="primary", disabled=not (weight_ok and selected_pie_id),
-                     key="pie_submit"):
+                    key="pie_submit"):
             selections = {
                 t: round(st.session_state.get(f"pie_w_{t}", 0.0) / 100, 6)
                 for t in st.session_state.pie_selections

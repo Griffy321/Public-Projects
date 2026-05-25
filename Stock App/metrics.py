@@ -8,7 +8,14 @@ import os
 from data_functions import data_fetcher
 from datetime import datetime as dt
 from datetime import timedelta as td
+from pathlib import Path 
 
+parent_path = Path(__file__).parent.joinpath("data")
+
+price_data = parent_path.joinpath("price_data")
+cash_flow_data = parent_path.joinpath("cash_flow_data")
+mkt_cap_data = parent_path.joinpath("mkt_cap_data")
+balance_sheet_data = parent_path.joinpath("balance_sheet_data")
 
 class Metrics:
     def __init__(self, ticker:str):
@@ -17,10 +24,10 @@ class Metrics:
     def mega_df(self) -> pd.DataFrame: 
         ticker = self.ticker
         paths = {
-                "price"         : f"C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/price_data/{ticker}.parquet",
-                "cash_flow"     : f"C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/cash_flow_data/{ticker}.parquet",
-                "mkt_cap"       : f"C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/mkt_cap_data/{ticker}.parquet",
-                "balance_sheet" : f"C:/Users/james/OneDrive/Desktop/Public-Projects/Stock App/data/balance_sheet_data/{ticker}.parquet"
+                "price"         : f"{price_data.joinpath(f'{ticker}.parquet')}",
+                "cash_flow"     : f"{cash_flow_data.joinpath(f'{ticker}.parquet')}",
+                "mkt_cap"       : f"{mkt_cap_data.joinpath(f'{ticker}.parquet')}",
+                "balance_sheet" : f"{balance_sheet_data.joinpath(f'{ticker}.parquet')}"
                 }
         for path in paths.items():
             print(path[1])

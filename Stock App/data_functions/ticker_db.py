@@ -12,9 +12,9 @@ from api.trading212 import TradingAccount
 
 class TickerDB(TradingAccount):
     def __init__(self, 
-                 connection=sqlite3.connect(sql_db_path),
-                 cursor = sqlite3.connect(sql_db_path).cursor()
-                 ):
+                connection=sqlite3.connect(sql_db_path),
+                cursor = sqlite3.connect(sql_db_path).cursor()
+                ):
         self.connection = connection # db connection
         self.cursor = cursor # cursor connection for querying 
 
@@ -68,18 +68,12 @@ class TickerDB(TradingAccount):
         return results
     
     # get_by_isin(isin) - return all instruments matching an ISIN (may be >1 if multi-exchange)
-    def get_by_isin(self, isin:str): 
+    def get_by_isin(self, isin:str):
         if isin is None:
             raise ValueError("Please provide an isin to be searched")
-        query = f"""
-                select
-                    *
-                from
-                    tickers
-                where
-                    upper(shortName) like upper(('{isin}%'))
-                """
-        results = self.cursor.execute(query).fetchall()
+        results = self.cursor.execute(
+            "SELECT * FROM tickers WHERE upper(isin) LIKE upper(?)", (f"{isin}%",)
+        ).fetchall()
         return results
 
     # is_tradeable(isin) - return bool, check if a given ISIN exists in the tickers table
@@ -102,29 +96,48 @@ class TickerDB(TradingAccount):
             else:
                 return False    
 
-    # TODO: get_by_currency(currency_code) - return all instruments traded in a given currency e.g. "GBP", "USD"
     def get_by_currency(self, currency_code:str):
-        pass
+        if not currency_code:
+            raise ValueError("Please provide a currency code")
+        return self.cursor.execute(
+            "SELECT * FROM tickers WHERE upper(currencyCode) = upper(?)", (currency_code,)
+        ).fetchall()
 
-    # TODO: get_extended_hours() - return all instruments where extendedHours is true
-    def get_extended_hours(self, extended_hours:bool):
-        pass
+    def get_extended_hours(self, extended_hours:bool = True):
+        return self.cursor.execute(
+            "SELECT * FROM tickers WHERE extendedHours = ?", (1 if extended_hours else 0,)
+        ).fetchall()
 
-    # TODO: get_by_type(type) - filter instruments by type e.g. ETF, STOCK
     def get_by_type(self, type:str):
-        pass
+        if not type:
+            raise ValueError("Please provide an instrument type e.g. STOCK, ETF")
+        return self.cursor.execute(
+            "SELECT * FROM tickers WHERE upper(type) = upper(?)", (type,)
+        ).fetchall()
 
-    # TODO: search_by_name(name) - fuzzy search on the name field, useful for a stock picker UI
     def search_by_name(self, name:str):
-        pass
+        if not name:
+            raise ValueError("Please provide a name to search")
+        return self.cursor.execute(
+            "SELECT * FROM tickers WHERE upper(name) LIKE upper(?)", (f"%{name}%",)
+        ).fetchall()
 
-    # TODO: filter_tradeables(isin_list) - given a list of ISINs (e.g. from FMP portfolio data), return which ones are available on T212
     def filter_tradeables(self, isin_list:list):
-        pass
+        if not isin_list:
+            return []
+        placeholders = ",".join("?" * len(isin_list))
+        rows = self.cursor.execute(
+            f"SELECT isin FROM tickers WHERE isin IN ({placeholders})", isin_list
+        ).fetchall()
+        return [r[0] for r in rows]
 
-    # TODO: get_max_quantity(isin) - return maxOpenQuantity for an instrument, useful before placing a trade
     def get_max_quantity(self, isin:str):
-        pass
+        if not isin:
+            raise ValueError("Please provide an ISIN")
+        row = self.cursor.execute(
+            "SELECT maxOpenQuantity FROM tickers WHERE upper(isin) = upper(?)", (isin,)
+        ).fetchone()
+        return row[0] if row else None
 
     def take_pct(self, pct):
         try:
@@ -145,8 +158,6 @@ class TickerDB(TradingAccount):
 
         results = self.get_by_ticker(ticker=ticker)
         return [{"ticker" : r[0], "name" : r[5]} for r in results]
-    # NOTE (UI contract): get_candidates is called live as the user types in the
-    # "Additional ticker" search box. No changes needed here — shape is correct.
 
     # TODO (UI contract): add_stocks_to_pie(pie_id: str, selections: dict[str, float])
     # This is the main action behind the "Add to Pie" button. selections is a dict of
@@ -162,9 +173,13 @@ class TickerDB(TradingAccount):
     #      update with the new entries, then pass the combined dict to update_pie.
     #   3. Validate weights with take_pct() before building the payload.
     #   4. Call self.update_pie(pie_id, instrument_shares_dict) and return the response.
+    def add_stocks_to_pie(self, pie_id:str, selections:dict[str, float]):
+        pass
 
     # TODO (UI contract): get_pie_list() — see note in trading212.py. Implement there
     # on TradingAccount; it will be inherited here automatically.
+    def get_pie_list():
+        pass
 
 
 # add FastAPI intergration between frount and backend 
