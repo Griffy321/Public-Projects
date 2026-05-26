@@ -80,15 +80,23 @@ class TradingAccount():
         return response    
 
     def get_all_pies(self):
-        pie_url = "https://live.trading212.com/api/v0/equity/pies"
-        response = self.try_request(url = pie_url)
-        return response.json()
-
-    # TODO (UI contract): get_pie_list() — wrap get_all_pies() and return a clean
-    # list[dict] of {"id": str, "name": str} for each pie. The UI pie dropdown calls
-    # TickerDB().get_pie_list() and expects exactly that shape.
-    # get_one_pie(pie_id) already returns settings.name, so iterate get_all_pies()
-    # and pull id + settings.name for each entry.
+        all_pie_url = "https://live.trading212.com/api/v0/equity/pies"
+        response = self.try_request(url = all_pie_url).json()
+        pie_ids = []
+        for pie in response:
+            pie_ids.append(pie["id"])
+        if len(pie_ids) == 0:
+            print("No ids returned")
+            return False
+        time.sleep(10) # sleep for 10 secs so the API can rest 
+        pie_name_list = []
+        for pie_id in pie_ids:
+            single_pie_url = f"https://live.trading212.com/api/v0/equity/pies/{pie_id}"
+            response = self.try_request(url=single_pie_url).json()
+            name = response.get("settings")["name"]
+            pie_name_list.append({"id" : pie_id, "name" : name})
+        yield pie_name_list
+        return True
 
     def get_one_pie(self, pie_id=None):
         if pie_id is None:
@@ -132,12 +140,16 @@ class TradingAccount():
             "name": name[0] + " : " + name[1]
             }
         response = self.try_post(url=update_url, payload=payload)
-        return response.json()
+        text = response.json()
+        print(text)
+        if response.status_code == 200:
+            print("Pie update complete!")
+            return True
+        else:
+            print(f"Pie update failed: \nStatus code: {response.status_code}\nResponse text:\n{response.json()}")
     
     def fetch_tickers(self):
         url = "https://live.trading212.com/api/v0/equity/metadata/instruments"
         response = self.try_request(url)
         return response.json()
 
-# account = TradingAccount()
-# print(account.fetch_tickers())
