@@ -116,10 +116,11 @@ class TradingAccount():
     # If you want "add to pie" to preserve existing holdings, fetch the current pie
     # composition first (get_one_pie), merge the new entries in, then call update_pie
     # with the combined dict. Decide this before wiring add_stocks_to_pie (see ticker_db.py).
-    def update_pie(self, pie_id:str, instrument_shares:dict):
+    def update_pie(self, pie_id:str, instrument_shares:dict, pie_info:dict=None):
         now = datetime.datetime.strftime(datetime.datetime.now(), format="%Y-%m-%dT%H:%M:%S")
         update_url = f"https://live.trading212.com/api/v0/equity/pies/{pie_id}"
-        pie_info = self.get_one_pie(pie_id)
+        if pie_info is None:
+            pie_info = self.get_one_pie(pie_id)
         settings = pie_info.get("settings")
         if " : " not in settings.get("name"): 
             payload = {

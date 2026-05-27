@@ -161,6 +161,16 @@ class TickerDB(TradingAccount):
         results = self.get_by_ticker(ticker=ticker)
         return [{"ticker" : r[0], "name" : r[5]} for r in results]
 
+    def set_pie_holdings(self, pie_id: str, holdings: dict[str, float]):
+        """Replace the full pie composition. holdings is {t212_ticker: weight_as_decimal}."""
+        validated = {}
+        for ticker, weight in holdings.items():
+            v = self.take_pct(weight)
+            if v is None:
+                raise ValueError(f"Invalid weight {weight} for {ticker}")
+            validated[ticker] = float(v)
+        return self.update_pie(pie_id, validated)
+
     def add_stocks_to_pie(self, pie_id: str, selections: dict[str, float]):
         new_shares = {}
         for ticker, weight in selections.items():
@@ -174,6 +184,6 @@ class TickerDB(TradingAccount):
         existing = {item["ticker"]: item["expectedShare"] for item in current.get("instruments", [])}
         merged = {**existing, **new_shares}
 
-        return self.update_pie(pie_id, merged)
+        return self.update_pie(pie_id, merged, pie_info=current)
 
 
