@@ -11,8 +11,13 @@ from api.trading212 import TradingAccount
 
 
 class TickerDB(TradingAccount):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, api_key=None, secret_key=None):
+        kwargs = {}
+        if api_key is not None:
+            kwargs["api_key"] = api_key
+        if secret_key is not None:
+            kwargs["secret_key"] = secret_key
+        super().__init__(**kwargs)
         self.connection = sqlite3.connect(sql_db_path)
         self.cursor = self.connection.cursor()
 

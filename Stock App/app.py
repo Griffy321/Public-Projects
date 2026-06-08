@@ -11,11 +11,25 @@ from pathlib import Path
 
 from metrics import Metrics
 from data_functions import data_fetcher
+import dotenv
+from api import fmp as _fmp_module
 
 # ─── Page config ───────────────────────────────────────────────────────────────
-st.set_page_config(page_title="Stock Analyser", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Stock Analyser", layout="wide", initial_sidebar_state="auto")
 
 DATA_ROOT = Path(__file__).parent / "data"
+
+_USER_KEYS_PATH = Path(__file__).parent / "user_keys.env"
+
+def load_user_keys() -> dict:
+    if not _USER_KEYS_PATH.exists():
+        return {}
+    return dict(dotenv.dotenv_values(str(_USER_KEYS_PATH)))
+
+def save_user_keys(fmp_key: str, t212_key: str, t212_secret: str):
+    dotenv.set_key(str(_USER_KEYS_PATH), "fmp_key", fmp_key)
+    dotenv.set_key(str(_USER_KEYS_PATH), "t212_key", t212_key)
+    dotenv.set_key(str(_USER_KEYS_PATH), "t212_secret", t212_secret)
 
 # ─── Helpers ───────────────────────────────────────────────────────────────────
 STOCK_COLOURS = ["#60a5fa", "#34d399", "#f87171", "#fbbf24", "#a78bfa", "#fb7185"]
@@ -272,6 +286,13 @@ def commentary(snap):
     return items
 
 # ─── Session state ─────────────────────────────────────────────────────────────
+if "keys_loaded" not in st.session_state:
+    _saved = load_user_keys()
+    st.session_state.keys_fmp    = _saved.get("fmp_key", "")
+    st.session_state.keys_t212   = _saved.get("t212_key", "")
+    st.session_state.keys_t212s  = _saved.get("t212_secret", "")
+    st.session_state.keys_loaded = True
+
 if "tickers" not in st.session_state:
     st.session_state.tickers = []
 if "cache_v" not in st.session_state:
@@ -285,8 +306,35 @@ if "pie_search_results" not in st.session_state:
 if "pie_loaded_candidates" not in st.session_state:
     st.session_state.pie_loaded_candidates = []
 
+# ─── Sidebar — API key settings ────────────────────────────────────────────────
+with st.sidebar:
+    with st.expander("API Keys", expanded=not st.session_state.keys_fmp):
+        st.caption("Keys are saved locally on your machine and never shared.")
+        fmp_input    = st.text_input("FMP API Key",            value=st.session_state.keys_fmp,   type="password")
+        st.divider()
+        t212_input   = st.text_input("Trading 212 API Key",    value=st.session_state.keys_t212,  type="password")
+        t212s_input  = st.text_input("Trading 212 Secret Key", value=st.session_state.keys_t212s, type="password")
+        st.caption("T212 keys are only needed for the Pies tab.")
+        if st.button("Save Keys", type="primary", use_container_width=True):
+            st.session_state.keys_fmp   = fmp_input
+            st.session_state.keys_t212  = t212_input
+            st.session_state.keys_t212s = t212s_input
+            save_user_keys(fmp_input, t212_input, t212s_input)
+            st.rerun()
+
+fmp_key    = st.session_state.keys_fmp
+t212_key   = st.session_state.keys_t212
+t212_secret = st.session_state.keys_t212s
+
+if fmp_key:
+    _fmp_module.set_api_key(fmp_key)
+
 # ─── Header ────────────────────────────────────────────────────────────────────
 st.title("Stock Analyser")
+
+if not fmp_key:
+    st.info("Open the **API Keys** section in the sidebar to enter your FMP key and get started.")
+    st.stop()
 
 col_ticker, col_from, col_to, col_add, col_clear = st.columns([2, 1.4, 1.4, 1, 1])
 with col_ticker:
@@ -492,181 +540,188 @@ for i, ticker in enumerate(live):
 with tabs[-1]:
     st.subheader("Trading 212 Pies")
 
-    # ── Pie selector ──────────────────────────────────────────────────────────
-    if "pie_map_cache" not in st.session_state:
-        try:
-            from data_functions.ticker_db import TickerDB as _TickerDB
-            st.session_state.pie_map_cache = {p["name"]: p["id"] for p in _TickerDB().get_pie_list()}
-        except Exception:
-            st.session_state.pie_map_cache = {}
-    pie_map = st.session_state.pie_map_cache
-
-    sel_col, reload_col = st.columns([3, 1], vertical_alignment="bottom")
-    with sel_col:
-        if pie_map:
-            selected_pie_name = st.selectbox("Pie", options=list(pie_map),
-                                             label_visibility="collapsed")
-            selected_pie_id = pie_map[selected_pie_name]
-        else:
-            st.selectbox("Pie", options=["— no pies found —"],
-                         disabled=True, label_visibility="collapsed")
-            selected_pie_id = None
-    with reload_col:
-        if st.button("Reload from T212", key="pie_reload", use_container_width=True):
-            st.session_state.pie_edit_id = None
-
-    # ── Auto-load holdings into editable state when pie changes ───────────────
-    if selected_pie_id and selected_pie_id != st.session_state.pie_edit_id:
-        try:
-            from data_functions.ticker_db import TickerDB as _TickerDB
-            pie_data = _TickerDB().get_one_pie(selected_pie_id)
-            instruments = pie_data.get("instruments", [])
-            for k in [k for k in st.session_state if k.startswith("pie_w_")]:
-                del st.session_state[k]
-            st.session_state.pie_edit = {
-                item["ticker"]: round(item["expectedShare"] * 100, 2)
-                for item in sorted(instruments, key=lambda x: x["expectedShare"], reverse=True)
-            }
-            st.session_state.pie_edit_id = selected_pie_id
-        except Exception as exc:
-            st.error(f"Could not load holdings: {exc}")
-
-    st.divider()
-
-    # ── Add stocks ────────────────────────────────────────────────────────────
-    col_qs, col_srch = st.columns(2)
-
-    with col_qs:
-        st.markdown("**From loaded stocks**")
-        qs_col, qadd_col = st.columns([3, 1], vertical_alignment="bottom")
-        with qs_col:
-            loaded_pick = st.selectbox(
-                "stock", options=[""] + list(live),
-                key="pie_loaded_sel", label_visibility="collapsed"
-            )
-        with qadd_col:
-            loaded_add = st.button("+ Add", key="pie_loaded_add",
-                                   type="primary", use_container_width=True)
-
-    with col_srch:
-        st.markdown("**Search ticker**")
-        s_col, b_col = st.columns([3, 1], vertical_alignment="bottom")
-        with s_col:
-            search_q = st.text_input(
-                "search", placeholder="e.g. NVDA",
-                key="pie_search_input", label_visibility="collapsed"
-            ).upper().strip()
-        with b_col:
-            search_hit = st.button("Search", key="pie_srch_btn", use_container_width=True)
-
-    # Resolve loaded stock to T212 ticker via DB lookup
-    if loaded_add and loaded_pick:
-        try:
-            from data_functions.ticker_db import TickerDB as _TickerDB
-            candidates = _TickerDB().get_candidates(loaded_pick)
-            if len(candidates) == 1:
-                t212_ticker = candidates[0]["ticker"]
-                if t212_ticker not in st.session_state.pie_edit:
-                    st.session_state.pie_edit[t212_ticker] = 0.0
-                st.session_state.pie_loaded_candidates = []
-                st.rerun()
-            elif len(candidates) > 1:
-                st.session_state.pie_loaded_candidates = candidates
-            else:
-                st.warning(f"{loaded_pick} not found in the ticker database.")
-        except Exception as exc:
-            st.error(f"Lookup failed: {exc}")
-
-    # Disambiguation picker when a loaded stock matches multiple exchange listings
-    if st.session_state.pie_loaded_candidates:
-        candidates = st.session_state.pie_loaded_candidates
-        dis_options = {f"{r['ticker']}  —  {r['name']}": r["ticker"] for r in candidates}
-        dis_col, dis_add_col = st.columns([4, 1], vertical_alignment="bottom")
-        with dis_col:
-            dis_label = st.selectbox("Pick listing", options=list(dis_options),
-                                     key="pie_dis_sel", label_visibility="collapsed")
-        with dis_add_col:
-            if st.button("Confirm", key="pie_dis_confirm",
-                         type="primary", use_container_width=True):
-                t212_ticker = dis_options[dis_label]
-                if t212_ticker not in st.session_state.pie_edit:
-                    st.session_state.pie_edit[t212_ticker] = 0.0
-                st.session_state.pie_loaded_candidates = []
-                st.rerun()
-
-    # Search results picker
-    if search_hit and search_q:
-        try:
-            from data_functions.ticker_db import TickerDB as _TickerDB
-            st.session_state.pie_search_results = _TickerDB().get_candidates(search_q)
-        except Exception as exc:
-            st.error(f"Search failed: {exc}")
-            st.session_state.pie_search_results = []
-
-    if st.session_state.pie_search_results:
-        results = st.session_state.pie_search_results
-        srch_options = {f"{r['ticker']}  —  {r['name']}": r["ticker"] for r in results}
-        pick_col, add_col = st.columns([4, 1], vertical_alignment="bottom")
-        with pick_col:
-            chosen_label = st.selectbox("result", options=list(srch_options),
-                                        key="pie_result_sel", label_visibility="collapsed")
-        with add_col:
-            if st.button("+ Add", key="pie_add_extra",
-                         type="primary", use_container_width=True):
-                t212_ticker = srch_options[chosen_label]
-                if t212_ticker not in st.session_state.pie_edit:
-                    st.session_state.pie_edit[t212_ticker] = 0.0
-                st.session_state.pie_search_results = []
-                st.rerun()
-
-    # ── Holdings editor ───────────────────────────────────────────────────────
-    if st.session_state.pie_edit:
-        st.divider()
-        st.markdown(f"**Holdings  ({len(st.session_state.pie_edit)} stocks)**")
-
-        for t, w in st.session_state.pie_edit.items():
-            if f"pie_w_{t}" not in st.session_state:
-                st.session_state[f"pie_w_{t}"] = w
-
-        h1, h2, h3 = st.columns([2, 2, 1])
-        h1.markdown("**Ticker**")
-        h2.markdown("**Weight (%)**")
-
-        total_w = 0.0
-        for ticker in list(st.session_state.pie_edit):
-            r1, r2, r3 = st.columns([2, 2, 1], vertical_alignment="center")
-            r1.write(ticker)
-            r2.number_input(
-                "w", min_value=0.0, max_value=100.0, step=1.0,
-                key=f"pie_w_{ticker}", label_visibility="collapsed"
-            )
-            total_w += st.session_state.get(f"pie_w_{ticker}", 0.0)
-            if r3.button("✕", key=f"pie_rm_{ticker}"):
-                del st.session_state.pie_edit[ticker]
-                st.session_state.pop(f"pie_w_{ticker}", None)
-                st.rerun()
-
-        weight_ok = abs(total_w - 100.0) < 0.5
-        if weight_ok:
-            st.success(f"Total: {total_w:.1f}%  ✓")
-        else:
-            st.warning(f"Total: {total_w:.1f}%  —  must equal 100%")
-
-        st.write("")
-
-        if st.button("Update Pie", type="primary", disabled=not (weight_ok and selected_pie_id),
-                     key="pie_submit"):
-            holdings = {
-                t: round(st.session_state.get(f"pie_w_{t}", 0.0) / 100, 6)
-                for t in st.session_state.pie_edit
-            }
-            try:
-                from data_functions.ticker_db import TickerDB as _TickerDB
-                _TickerDB().set_pie_holdings(selected_pie_id, holdings)
-                st.success("Pie updated!")
-                st.session_state.pie_edit_id = None
-                st.rerun()
-            except Exception as exc:
-                st.error(f"Failed: {exc}")
+    if not (t212_key and t212_secret):
+        st.info("Enter your Trading 212 API key and secret in the sidebar to use this feature.")
     else:
-        st.caption("Select a pie above to load and edit its holdings.")
+        from data_functions.ticker_db import TickerDB as _TickerDB
+
+        # Invalidate the cached pie list if credentials changed
+        _t212_fp = f"{t212_key}:{t212_secret}"
+        if st.session_state.get("_t212_fp") != _t212_fp:
+            st.session_state.pop("pie_map_cache", None)
+            st.session_state.pie_edit_id = None
+            st.session_state._t212_fp = _t212_fp
+
+        # ── Pie selector ──────────────────────────────────────────────────────────
+        if "pie_map_cache" not in st.session_state:
+            try:
+                st.session_state.pie_map_cache = {p["name"]: p["id"] for p in _TickerDB(api_key=t212_key, secret_key=t212_secret).get_pie_list()}
+            except Exception:
+                st.session_state.pie_map_cache = {}
+        pie_map = st.session_state.pie_map_cache
+
+        sel_col, reload_col = st.columns([3, 1], vertical_alignment="bottom")
+        with sel_col:
+            if pie_map:
+                selected_pie_name = st.selectbox("Pie", options=list(pie_map),
+                                                 label_visibility="collapsed")
+                selected_pie_id = pie_map[selected_pie_name]
+            else:
+                st.selectbox("Pie", options=["— no pies found —"],
+                             disabled=True, label_visibility="collapsed")
+                selected_pie_id = None
+        with reload_col:
+            if st.button("Reload from T212", key="pie_reload", use_container_width=True):
+                st.session_state.pie_edit_id = None
+
+        # ── Auto-load holdings into editable state when pie changes ───────────────
+        if selected_pie_id and selected_pie_id != st.session_state.pie_edit_id:
+            try:
+                pie_data = _TickerDB(api_key=t212_key, secret_key=t212_secret).get_one_pie(selected_pie_id)
+                instruments = pie_data.get("instruments", [])
+                for k in [k for k in st.session_state if k.startswith("pie_w_")]:
+                    del st.session_state[k]
+                st.session_state.pie_edit = {
+                    item["ticker"]: round(item["expectedShare"] * 100, 2)
+                    for item in sorted(instruments, key=lambda x: x["expectedShare"], reverse=True)
+                }
+                st.session_state.pie_edit_id = selected_pie_id
+            except Exception as exc:
+                st.error(f"Could not load holdings: {exc}")
+
+        st.divider()
+
+        # ── Add stocks ────────────────────────────────────────────────────────────
+        col_qs, col_srch = st.columns(2)
+
+        with col_qs:
+            st.markdown("**From loaded stocks**")
+            qs_col, qadd_col = st.columns([3, 1], vertical_alignment="bottom")
+            with qs_col:
+                loaded_pick = st.selectbox(
+                    "stock", options=[""] + list(live),
+                    key="pie_loaded_sel", label_visibility="collapsed"
+                )
+            with qadd_col:
+                loaded_add = st.button("+ Add", key="pie_loaded_add",
+                                       type="primary", use_container_width=True)
+
+        with col_srch:
+            st.markdown("**Search ticker**")
+            s_col, b_col = st.columns([3, 1], vertical_alignment="bottom")
+            with s_col:
+                search_q = st.text_input(
+                    "search", placeholder="e.g. NVDA",
+                    key="pie_search_input", label_visibility="collapsed"
+                ).upper().strip()
+            with b_col:
+                search_hit = st.button("Search", key="pie_srch_btn", use_container_width=True)
+
+        # Resolve loaded stock to T212 ticker via DB lookup
+        if loaded_add and loaded_pick:
+            try:
+                candidates = _TickerDB(api_key=t212_key, secret_key=t212_secret).get_candidates(loaded_pick)
+                if len(candidates) == 1:
+                    t212_ticker = candidates[0]["ticker"]
+                    if t212_ticker not in st.session_state.pie_edit:
+                        st.session_state.pie_edit[t212_ticker] = 0.0
+                    st.session_state.pie_loaded_candidates = []
+                    st.rerun()
+                elif len(candidates) > 1:
+                    st.session_state.pie_loaded_candidates = candidates
+                else:
+                    st.warning(f"{loaded_pick} not found in the ticker database.")
+            except Exception as exc:
+                st.error(f"Lookup failed: {exc}")
+
+        # Disambiguation picker when a loaded stock matches multiple exchange listings
+        if st.session_state.pie_loaded_candidates:
+            candidates = st.session_state.pie_loaded_candidates
+            dis_options = {f"{r['ticker']}  —  {r['name']}": r["ticker"] for r in candidates}
+            dis_col, dis_add_col = st.columns([4, 1], vertical_alignment="bottom")
+            with dis_col:
+                dis_label = st.selectbox("Pick listing", options=list(dis_options),
+                                         key="pie_dis_sel", label_visibility="collapsed")
+            with dis_add_col:
+                if st.button("Confirm", key="pie_dis_confirm",
+                             type="primary", use_container_width=True):
+                    t212_ticker = dis_options[dis_label]
+                    if t212_ticker not in st.session_state.pie_edit:
+                        st.session_state.pie_edit[t212_ticker] = 0.0
+                    st.session_state.pie_loaded_candidates = []
+                    st.rerun()
+
+        # Search results picker
+        if search_hit and search_q:
+            try:
+                st.session_state.pie_search_results = _TickerDB(api_key=t212_key, secret_key=t212_secret).get_candidates(search_q)
+            except Exception as exc:
+                st.error(f"Search failed: {exc}")
+                st.session_state.pie_search_results = []
+
+        if st.session_state.pie_search_results:
+            results = st.session_state.pie_search_results
+            srch_options = {f"{r['ticker']}  —  {r['name']}": r["ticker"] for r in results}
+            pick_col, add_col = st.columns([4, 1], vertical_alignment="bottom")
+            with pick_col:
+                chosen_label = st.selectbox("result", options=list(srch_options),
+                                            key="pie_result_sel", label_visibility="collapsed")
+            with add_col:
+                if st.button("+ Add", key="pie_add_extra",
+                             type="primary", use_container_width=True):
+                    t212_ticker = srch_options[chosen_label]
+                    if t212_ticker not in st.session_state.pie_edit:
+                        st.session_state.pie_edit[t212_ticker] = 0.0
+                    st.session_state.pie_search_results = []
+                    st.rerun()
+
+        # ── Holdings editor ───────────────────────────────────────────────────────
+        if st.session_state.pie_edit:
+            st.divider()
+            st.markdown(f"**Holdings  ({len(st.session_state.pie_edit)} stocks)**")
+
+            for t, w in st.session_state.pie_edit.items():
+                if f"pie_w_{t}" not in st.session_state:
+                    st.session_state[f"pie_w_{t}"] = w
+
+            h1, h2, h3 = st.columns([2, 2, 1])
+            h1.markdown("**Ticker**")
+            h2.markdown("**Weight (%)**")
+
+            total_w = 0.0
+            for ticker in list(st.session_state.pie_edit):
+                r1, r2, r3 = st.columns([2, 2, 1], vertical_alignment="center")
+                r1.write(ticker)
+                r2.number_input(
+                    "w", min_value=0.0, max_value=100.0, step=1.0,
+                    key=f"pie_w_{ticker}", label_visibility="collapsed"
+                )
+                total_w += st.session_state.get(f"pie_w_{ticker}", 0.0)
+                if r3.button("✕", key=f"pie_rm_{ticker}"):
+                    del st.session_state.pie_edit[ticker]
+                    st.session_state.pop(f"pie_w_{ticker}", None)
+                    st.rerun()
+
+            weight_ok = abs(total_w - 100.0) < 0.5
+            if weight_ok:
+                st.success(f"Total: {total_w:.1f}%  ✓")
+            else:
+                st.warning(f"Total: {total_w:.1f}%  —  must equal 100%")
+
+            st.write("")
+
+            if st.button("Update Pie", type="primary", disabled=not (weight_ok and selected_pie_id),
+                         key="pie_submit"):
+                holdings = {
+                    t: round(st.session_state.get(f"pie_w_{t}", 0.0) / 100, 6)
+                    for t in st.session_state.pie_edit
+                }
+                try:
+                    _TickerDB(api_key=t212_key, secret_key=t212_secret).set_pie_holdings(selected_pie_id, holdings)
+                    st.success("Pie updated!")
+                    st.session_state.pie_edit_id = None
+                    st.rerun()
+                except Exception as exc:
+                    st.error(f"Failed: {exc}")
+        else:
+            st.caption("Select a pie above to load and edit its holdings.")

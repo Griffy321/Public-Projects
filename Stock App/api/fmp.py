@@ -25,6 +25,11 @@ historical_mkt_cap_url = os.getenv("historical_mkt_cap")
 balance_sheet_url = os.getenv("balance_sheet_url")
 
 
+def set_api_key(key: str):
+    global api_key
+    api_key = key
+
+
 def build_intervals(start_date: datetime.date = None, end_date: datetime.date = None, num_days: int = 60) -> list:
     """Split a date range into chunks of num_days, returning a list of [start, end] string pairs."""
     try:
