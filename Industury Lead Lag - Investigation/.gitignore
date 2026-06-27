@@ -1,0 +1,13 @@
+# Data caches (regenerable - prices, candidates, earnings, universe, results)
+leadlag_backtest/data/
+
+# Secrets / config / credentials (API keys etc.)
+*.env
+.env
+config.env
+*secret*
+*credential*
+*.key
+*.pem
+*apikey*
+*api_key*
